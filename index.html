@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Indian Car Racing - With Ads</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- AdMob SDK -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-app-pub-6302105448775587~3777252654" crossorigin="anonymous"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #000; color: white; overflow: hidden; width: 100vw; height: 100vh; }
+        #gameContainer { position: relative; width: 100%; height: 100%; }
+        canvas { display: block; background: #1a1a1a; }
+        .ui { position: absolute; background: rgba(0,0,0,0.8); color: white; padding: 12px 20px; border-radius: 12px; z-index: 100; font-size: 18px; font-weight: bold; }
+        #score { top: 60px; left: 20px; }
+        #lives { top: 60px; right: 20px; color: #ff5252; }
+        .btn { background: linear-gradient(45deg, #FF9800, #FF5722); color: white; padding: 15px 30px; border: none; border-radius: 10px; margin: 10px; cursor: pointer; font-size: 18px; font-weight: bold; box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3); }
+        #adBtn { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: linear-gradient(45deg, #4CAF50, #45a049); }
+        #startBtn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 24px; padding: 20px 40px; }
+        #gameTitle { position: absolute; top: 20%; left: 50%; transform: translateX(-50%); font-size: 48px; color: #FF9800; text-shadow: 3px 3px 6px rgba(0,0,0,0.5); }
+        #debugBtn { position: fixed; top: 10px; left: 10px; z-index: 10000; padding: 8px 12px; background: #ff4444; color: white; border: none; border-radius: 5px; font-size: 12px; }
+        #status { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 8px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="gameTitle">🚗 Indian Car Racing</div>
+        <div id="score" class="ui">Score: 0</div>
+        <div id="lives" class="ui">Lives: 3</div>
+        <div id="status">Loading game...</div>
+        
+        <button id="startBtn" class="btn" onclick="startGame()">🎮 Start Game</button>
+        <button id="adBtn" class="btn" onclick="showRewardedAd()" style="display:none;">🎁 Get 3 Lives (Watch Ad)</button>
+    </div>
+
+    <!-- Debug Button -->
+    <button id="debugBtn" onclick="showDebugInfo()">🔧 Debug</button>
+
+    <script>
+        // AdMob Configuration
+        const ADMOB_IDS = {
+            interstitial: 'ca-app-pub-6302105448775587/5186924288',
+            rewarded: 'ca-app-pub-6302105448775587/1000907894'
+        };
+
+        // Game Variables
+        let score = 0, lives = 3, gameActive = false;
+        let interstitialAd = null, rewardedAd = null;
+        let canvas, ctx, player = { x: 0, y: 0, width: 60, height: 100 };
+        let roadY = 0;
+
+        // Debug Function
+        function showDebugInfo() {
+            const status = `
+AdMob Debug Info:
+✅ SDK Loaded: ${typeof google !== 'undefined'}
+🎯 Interstitial: ${interstitialAd ? 'READY' : 'NOT READY'}
+🎁 Rewarded: ${rewardedAd ? 'READY' : 'NOT READY'}
+📱 Game Active: ${gameActive}
+💰 Score: ${score}
+❤️ Lives: ${lives}
+            `;
+            alert(status);
+        }
+
+        // Update Status
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+
+        // Initialize Game
+        function init() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            setupPlayer();
+            initAds();
+            drawMenu();
+            updateStatus('Game ready! Click Start');
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            setupPlayer();
+            if (gameActive) drawGame();
+            else drawMenu();
+        }
+
+        function setupPlayer() {
+            player.x = canvas.width / 2;
+            player.y = canvas.height - 120;
+        }
+
+        function drawMenu() {
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#333';
+            ctx.fillRect(canvas.width * 0.25, 0, canvas.width * 0.5, canvas.height);
+        }
+
+        function startGame() {
+            gameActive = true;
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('adBtn').style.display = 'block';
+            score = 0;
+            lives = 3;
+            updateUI();
+            updateStatus('Game started! Drive safe!');
+            
+            // Show interstitial when game starts
+            showInterstitialAd();
+            gameLoop();
+        }
+
+        function drawGame() {
+            roadY = (roadY + 5) % canvas.height;
+            
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#333';
+            ctx.fillRect(canvas.width * 0.25, 0, canvas.width * 0.5, canvas.height);
+            
+            ctx.fillStyle = 'yellow';
+            for(let i = -40; i < canvas.height + 40; i += 40) {
+                ctx.fillRect(canvas.width/2 - 5, (i + roadY) % (canvas.height + 40), 10, 20);
+            }
+            
+            ctx.fillStyle = '#2196F3';
+            ctx.fillRect(player.x - player.width/2, player.y - player.height/2, player.width, player.height);
+        }
+
+        function gameLoop() {
+            if (!gameActive) return;
+            
+            drawGame();
+            score++;
+            
+            if (score % 200 === 0) {
+                showInterstitialAd();
+            }
+            
+            updateUI();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateUI() {
+            document.getElementById('score').textContent = 'Score: ' + score;
+            document.getElementById('lives').textContent = 'Lives: ' + lives;
+            
+            if (lives <= 0) {
+                gameOver();
+            }
+        }
+
+        function gameOver() {
+            gameActive = false;
+            document.getElementById('startBtn').style.display = 'block';
+            document.getElementById('adBtn').style.display = 'none';
+            document.getElementById('startBtn').textContent = '🔄 Play Again (Score: ' + score + ')';
+            updateStatus('Game Over! Final Score: ' + score);
+            showInterstitialAd();
+            drawMenu();
+        }
+
+        // AdMob Functions - IMPROVED
+        function initAds() {
+            updateStatus('Initializing AdMob ads...');
+            
+            if (typeof google === 'undefined') {
+                updateStatus('Waiting for AdMob SDK...');
+                setTimeout(initAds, 2000);
+                return;
+            }
+
+            try {
+                // Interstitial Ad
+                interstitialAd = new google.ads.adsbygoogle.InterstitialAd();
+                interstitialAd.adUnitId = ADMOB_IDS.interstitial;
+                
+                interstitialAd.addEventListener('adLoaded', () => {
+                    updateStatus('Interstitial ad ready!');
+                    console.log('✅ Interstitial loaded');
+                });
+                
+                interstitialAd.addEventListener('adFailedToLoad', (error) => {
+                    updateStatus('Interstitial failed');
+                    console.log('❌ Interstitial failed:', error);
+                    // Retry after 5 seconds
+                    setTimeout(loadInterstitialAd, 5000);
+                });
+                
+                interstitialAd.addEventListener('adDismissed', () => {
+                    updateStatus('Interstitial closed');
+                    setTimeout(loadInterstitialAd, 3000);
+                });
+
+                // Rewarded Ad
+                rewardedAd = new google.ads.adsbygoogle.RewardedAd();
+                rewardedAd.adUnitId = ADMOB_IDS.rewarded;
+                
+                rewardedAd.addEventListener('adLoaded', () => {
+                    updateStatus('Rewarded ad ready! Click Get Lives');
+                    console.log('✅ Rewarded loaded');
+                    document.getElementById('adBtn').style.background = 'linear-gradient(45deg, #4CAF50, #45a049)';
+                });
+                
+                rewardedAd.addEventListener('adFailedToLoad', (error) => {
+                    updateStatus('Rewarded failed - retrying...');
+                    console.log('❌ Rewarded failed:', error);
+                    document.getElementById('adBtn').style.background = 'linear-gradient(45deg, #f44336, #d32f2f)';
+                    setTimeout(loadRewardedAd, 5000);
+                });
+                
+                rewardedAd.addEventListener('adDismissed', () => {
+                    updateStatus('Rewarded closed');
+                    setTimeout(loadRewardedAd, 3000);
+                });
+                
+                rewardedAd.addEventListener('userEarnedReward', (reward) => {
+                    lives += 3;
+                    updateStatus('🎉 3 Lives Added! Thank you!');
+                    updateUI();
+                });
+
+                // Load ads
+                loadInterstitialAd();
+                loadRewardedAd();
+                updateStatus('Ads initialized successfully!');
+                
+            } catch (error) {
+                updateStatus('AdMob error: ' + error.message);
+                console.log('AdMob init error:', error);
+            }
+        }
+
+        function loadInterstitialAd() {
+            if (interstitialAd) {
+                interstitialAd.load().catch(error => {
+                    console.log('Interstitial load error:', error);
+                });
+            }
+        }
+
+        function loadRewardedAd() {
+            if (rewardedAd) {
+                rewardedAd.load().catch(error => {
+                    console.log('Rewarded load error:', error);
+                document.getElementById('adBtn').style.background = 'linear-gradient(45deg, #ff9800, #f57c00)';
+                updateStatus('Loading rewarded ad...');
+                setTimeout(loadRewardedAd, 5000);
+            });
+            }
+        }
+
+        function showInterstitialAd() {
+            if (interstitialAd) {
+                interstitialAd.show().then(() => {
+                    updateStatus('Showing interstitial ad...');
+                }).catch(error => {
+                    updateStatus('Interstitial not ready');
+                    console.log('Interstitial show error:', error);
+                });
+            } else {
+                updateStatus('Interstitial not initialized');
+            }
+        }
+
+        function showRewardedAd() {
+            if (rewardedAd) {
+                rewardedAd.show().then(() => {
+                    updateStatus('Showing rewarded ad...');
+                }).catch(error => {
+                    updateStatus('Rewarded ad not ready yet');
+                    alert('Ad not ready. Please wait few seconds and try again.');
+                });
+            } else {
+                alert('Ad system not ready. Please wait...');
+            }
+        }
+
+        // Controls
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!gameActive) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.touches[0].clientX - rect.left;
+            player.x = Math.max(canvas.width * 0.25 + player.width/2, 
+                              Math.min(canvas.width * 0.75 - player.width/2, x));
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!gameActive) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            player.x = Math.max(canvas.width * 0.25 + player.width/2, 
+                              Math.min(canvas.width * 0.75 - player.width/2, x));
+        });
+
+        // Simulate obstacles
+        setInterval(() => {
+            if (gameActive && Math.random() < 0.1) {
+                lives--;
+                updateUI();
+            }
+        }, 2000);
+
+        // Initialize game
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
