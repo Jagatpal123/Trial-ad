@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Ads Test - Car Racing</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: Arial; padding: 20px; text-align: center; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+        .button { padding: 18px 35px; font-size: 18px; border: none; border-radius: 10px; cursor: pointer; margin: 15px; font-weight: bold; transition: all 0.3s; }
+        .interstitial { background: linear-gradient(45deg, #FF416C, #FF4B2B); color: white; }
+        .rewarded { background: linear-gradient(45deg, #38ef7d, #11998e); color: white; }
+        .button:hover { transform: scale(1.05); }
+        .button:active { transform: scale(0.95); }
+        .button:disabled { background: #ccc; cursor: not-allowed; }
+        .status { margin: 20px 0; padding: 15px; border-radius: 10px; text-align: left; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #cce7ff; color: #004085; border: 1px solid #b3d7ff; }
+        .loading { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+    </style>
+
+    <!-- InMobi SDK - CORRECT PUBLISHER ID -->
+    <script type="text/javascript">
+        window._inm = window._inm || {};
+        // 🔄 CORRECT IDs
+        _inm.adunitid = '10000503629';                    // Interstitial Ad Unit ID
+        _inm.siteid = '10000127491';                      // App ID  
+        _inm.pubid = '868df4975e3849ee9b6066366fd9617d';  // ✅ CORRECT Publisher ID
+        (function() {
+            var inm = document.createElement('script'); 
+            inm.type = 'text/javascript'; 
+            inm.async = true;
+            inm.src = 'https://cf-cdn.inmobi.com/ad/sdk/browser/inmobi-web-sdk-1.0.0-html5.js';
+            var s = document.getElementsByTagName('script')[0]; 
+            s.parentNode.insertBefore(inm, s);
+        })();
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 Live Ads Test - Car Racing</h1>
+        <p><strong>PRODUCTION MODE - Real Ads</strong></p>
+        
+        <div class="status info">
+            <strong>Your Correct IDs:</strong><br>
+            App ID: 10000127491<br>
+            Interstitial: 10000503629<br>
+            Rewarded: 10000503894<br>
+            Publisher: 868df4975e3849ee9b6066366fd9617d
+        </div>
+
+        <div>
+            <button class="button interstitial" id="interstitialBtn" onclick="testInterstitialAd()">
+                🎯 Test Interstitial Ad
+            </button>
+            
+            <button class="button rewarded" id="rewardedBtn" onclick="testRewardedAd()">
+                🎁 Test Rewarded Ad
+            </button>
+        </div>
+
+        <div id="status" class="status info">
+            Initializing SDK... Please wait
+        </div>
+
+        <div id="debug" style="text-align: left; margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; font-size: 14px; max-height: 300px; overflow-y: auto;">
+            <strong>Live Debug Info:</strong><br>
+            <div id="debugContent"></div>
+        </div>
+    </div>
+
+    <script>
+        let interstitialAd, rewardedAd;
+        let interstitialLoaded = false;
+        let rewardedLoaded = false;
+
+        function addDebug(message) {
+            const debugDiv = document.getElementById('debugContent');
+            debugDiv.innerHTML += '<div>[' + new Date().toLocaleTimeString() + '] ' + message + '</div>';
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+        }
+
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = message;
+            statusDiv.className = 'status ' + type;
+        }
+
+        function updateButtons() {
+            document.getElementById('interstitialBtn').disabled = !interstitialLoaded;
+            document.getElementById('rewardedBtn').disabled = !rewardedLoaded;
+        }
+
+        // SDK load check
+        function checkSDK() {
+            if (typeof _inm !== 'undefined' && typeof _inm.InMobiAd !== 'undefined') {
+                addDebug('✅ InMobi SDK loaded successfully');
+                showStatus('SDK loaded. Initializing ads...', 'info');
+                initializeAds();
+            } else {
+                addDebug('⏳ Waiting for InMobi SDK...');
+                setTimeout(checkSDK, 1000);
+            }
+        }
+
+        // Initialize ads
+        function initializeAds() {
+            addDebug('🔄 Creating Interstitial Ad...');
+            
+            // Interstitial Ad
+            try {
+                interstitialAd = new _inm.InMobiAd('10000503629', {
+                    adType: 'interstitial',
+                    onAdLoad: function() {
+                        addDebug('✅ INTERSTITIAL AD LOADED SUCCESSFULLY!');
+                        showStatus('🎯 Interstitial Ad Ready! Click to show.', 'success');
+                        interstitialLoaded = true;
+                        updateButtons();
+                    },
+                    onAdLoadFailed: function(error) {
+                        addDebug('❌ INTERSTITIAL FAILED: ' + JSON.stringify(error));
+                        showStatus('❌ Interstitial failed: ' + (error.message || 'Check ad unit'), 'error');
+                        interstitialLoaded = false;
+                        updateButtons();
+                    },
+                    onAdDisplayed: function() {
+                        addDebug('📱 Interstitial Ad DISPLAYED');
+                        showStatus('Interstitial ad showing...', 'success');
+                    },
+                    onAdDismissed: function() {
+                        addDebug('🔒 Interstitial Ad CLOSED');
+                        showStatus('Interstitial closed. Load new ad...', 'info');
+                        interstitialLoaded = false;
+                        updateButtons();
+                        // Reload for next time
+                        setTimeout(() => interstitialAd.load(), 1000);
+                    }
+                });
+
+                addDebug('🔄 Creating Rewarded Ad...');
+                
+                // Rewarded Ad
+                rewardedAd = new _inm.InMobiAd('10000503894', {
+                    adType: 'rewarded',
+                    onAdLoad: function() {
+                        addDebug('✅ REWARDED AD LOADED SUCCESSFULLY!');
+                        showStatus('🎁 Rewarded Ad Ready! Click to show.', 'success');
+                        rewardedLoaded = true;
+                        updateButtons();
+                    },
+                    onAdLoadFailed: function(error) {
+                        addDebug('❌ REWARDED FAILED: ' + JSON.stringify(error));
+                        showStatus('❌ Rewarded failed: ' + (error.message || 'Check ad unit'), 'error');
+                        rewardedLoaded = false;
+                        updateButtons();
+                    },
+                    onAdDisplayed: function() {
+                        addDebug('📱 Rewarded Ad DISPLAYED');
+                        showStatus('Rewarded ad showing...', 'success');
+                    },
+                    onUserRewarded: function(reward) {
+                        addDebug('🎁 USER REWARDED! 3 Lives added!');
+                        showStatus('🎉 Reward earned! 3 Lives added!', 'success');
+                    },
+                    onAdDismissed: function() {
+                        addDebug('🔒 Rewarded Ad CLOSED');
+                        showStatus('Rewarded closed. Load new ad...', 'info');
+                        rewardedLoaded = false;
+                        updateButtons();
+                        // Reload for next time
+                        setTimeout(() => rewardedAd.load(), 1000);
+                    }
+                });
+
+                // Pre-load both ads
+                addDebug('🔄 Loading Interstitial Ad...');
+                interstitialAd.load();
+                
+                addDebug('🔄 Loading Rewarded Ad...');
+                rewardedAd.load();
+
+            } catch (error) {
+                addDebug('❌ ERROR initializing ads: ' + error.toString());
+                showStatus('Error initializing ads: ' + error.toString(), 'error');
+            }
+        }
+
+        // Test Interstitial Ad
+        function testInterstitialAd() {
+            if (!interstitialLoaded) {
+                showStatus('Interstitial not loaded yet. Please wait...', 'error');
+                return;
+            }
+            
+            addDebug('🎯 Showing Interstitial Ad...');
+            showStatus('Showing Interstitial Ad...', 'loading');
+            interstitialAd.show();
+        }
+
+        // Test Rewarded Ad
+        function testRewardedAd() {
+            if (!rewardedLoaded) {
+                showStatus('Rewarded not loaded yet. Please wait...', 'error');
+                return;
+            }
+            
+            addDebug('🎁 Showing Rewarded Ad...');
+            showStatus('Showing Rewarded Ad...', 'loading');
+            rewardedAd.show();
+        }
+
+        // Start the process
+        addDebug('🚀 Starting InMobi SDK...');
+        setTimeout(checkSDK, 1000);
+
+        // Show initial status
+        showStatus('Loading InMobi SDK...', 'loading');
+    </script>
+</body>
+</html>
